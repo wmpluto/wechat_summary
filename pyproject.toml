@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wechat-summary"
+version = "0.1.0"
+description = "WeChat chat extraction and summarization tool"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Damien", email = "damien@example.com"}
+]
+dependencies = [
+    "uiautomator2",
+    "click",
+    "pydantic>=2.0",
+    "openai",
+    "tiktoken",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+wechat-summary = "wechat_summary.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wechat_summary"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end integration tests",
+]

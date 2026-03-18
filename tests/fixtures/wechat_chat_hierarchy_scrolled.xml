@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hierarchy rotation="0">
+  <node index="0" text="" resource-id="" class="android.widget.FrameLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][1080,1920]">
+    <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][1080,1920]">
+      <!-- Top bar with chat title -->
+      <node index="0" text="" resource-id="com.tencent.mm:id/title_bar" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][1080,96]">
+        <node index="0" text="测试群聊" resource-id="com.tencent.mm:id/title" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,24][600,72]"/>
+      </node>
+      
+      <!-- Message list container - scrolled up, showing messages 6-10 plus 3 new ones -->
+      <node index="1" text="" resource-id="com.tencent.mm:id/message_list" class="android.widget.ListView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="true" focused="false" scrollable="true" long-clickable="false" password="false" selected="false" bounds="[0,96][1080,1728]">
+        
+        <!-- Message 6: 李四 - Text message (OVERLAPPING - same as before) -->
+        <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,96][1080,200]">
+          <node index="0" text="李四" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,110][150,140]"/>
+          <node index="1" text="明天开会讨论项目进度" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,145][450,185]"/>
+          <node index="2" text="10:05" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[900,155][1000,175]"/>
+        </node>
+        
+        <!-- Message 7: 王五 - Text message (OVERLAPPING - same as before) -->
+        <node index="1" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,200][1080,304]">
+          <node index="0" text="王五" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,214][150,244]"/>
+          <node index="1" text="好的，我会准时参加" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,249][400,289]"/>
+          <node index="2" text="10:06" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[900,259][1000,279]"/>
+        </node>
+        
+        <!-- Message 8: System message (OVERLAPPING - same as before) -->
+        <node index="2" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,304][1080,408]">
+          <node index="0" text="系统" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[400,318][680,348]"/>
+          <node index="1" text="张三 邀请了 赵六 加入群聊" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[300,353][780,393]"/>
+          <node index="2" text="10:07" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[900,363][1000,383]"/>
+        </node>
+        
+        <!-- Message 9: 我 - Text message (NEW) -->
+        <node index="3" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,408][1080,512]">
+          <node index="0" text="我" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[930,422][1000,452]"/>
+          <node index="1" text="欢迎加入！" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[700,457][1000,497]"/>
+          <node index="2" text="10:08" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[600,467][680,487]"/>
+        </node>
+        
+        <!-- Message 10: 赵六 - Text message (NEW) -->
+        <node index="4" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,512][1080,616]">
+          <node index="0" text="赵六" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,526][150,556]"/>
+          <node index="1" text="谢谢邀请！" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,561][300,601]"/>
+          <node index="2" text="10:09" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[900,571][1000,591]"/>
+        </node>
+        
+        <!-- Message 11: 张三 - Text message (NEW) -->
+        <node index="5" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,616][1080,720]">
+          <node index="0" text="张三" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,630][150,660]"/>
+          <node index="1" text="大家准时参加哦" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[48,665][350,705]"/>
+          <node index="2" text="10:10" resource-id="" class="android.widget.TextView" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[900,675][1000,695]"/>
+        </node>
+        
+      </node>
+      
+      <!-- Input box at bottom -->
+      <node index="2" text="" resource-id="com.tencent.mm:id/input_box" class="android.widget.EditText" package="com.tencent.mm" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,1728][1080,1920]"/>
+    </node>
+  </node>
+</hierarchy>
