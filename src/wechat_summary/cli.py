@@ -85,6 +85,33 @@ def _sanitize_filename(name: str) -> str:
     return sanitized or "unknown"
 
 
+def _save_chat_json(
+    chat_name: str,
+    messages: list,
+    device_info: str,
+    batch_dir: Path,
+    *,
+    partial: bool = False,
+) -> Path:
+    """Save messages as a ChatSession JSON file. Returns the saved path."""
+    session = ChatSession(
+        chat_name=chat_name,
+        chat_type=ChatType.PRIVATE,
+        messages=messages,
+        extracted_at=datetime.now(),
+        device_info=device_info,
+    )
+    sanitized = _sanitize_filename(chat_name)
+    suffix = "_partial" if partial else ""
+    filepath = batch_dir / f"{sanitized}{suffix}.json"
+    filepath.write_text(
+        session.model_dump_json(indent=2, by_alias=True),
+        encoding="utf-8",
+    )
+    click.echo(f"  💾 已保存: {filepath}")
+    return filepath
+
+
 def _process_single_chat(
     device: Any,
     navigator: ChatListNavigator,
@@ -98,7 +125,7 @@ def _process_single_chat(
     """Enter chat, extract messages, save JSON, and exit chat."""
 
     _ = store
-    messages = []
+    messages: list = []
     try:
         click.echo(f"  📥 enter_chat: {item.name}")
         if not navigator.enter_chat(device, item):
@@ -110,20 +137,7 @@ def _process_single_chat(
         click.echo(f"  📊 提取结果: {len(messages)} 条消息")
 
         if messages:
-            session = ChatSession(
-                chat_name=item.name,
-                chat_type=ChatType.PRIVATE,
-                messages=messages,
-                extracted_at=datetime.now(),
-                device_info=device_info,
-            )
-            sanitized = _sanitize_filename(item.name)
-            filepath = batch_dir / f"{sanitized}.json"
-            filepath.write_text(
-                session.model_dump_json(indent=2, by_alias=True),
-                encoding="utf-8",
-            )
-            click.echo(f"  💾 已保存: {filepath}")
+            _save_chat_json(item.name, messages, device_info, batch_dir)
         else:
             click.echo("  ⚠️  无消息（可能该时间范围内无聊天记录）")
 
@@ -133,11 +147,15 @@ def _process_single_chat(
         raise
     except Exception as exc:  # noqa: BLE001
         click.echo(f"  ❌ 提取异常: {type(exc).__name__}: {exc}")
+        # Save whatever we collected before the error
+        if messages:
+            click.echo(f"  💾 正在保存已提取的 {len(messages)} 条消息...")
+            _save_chat_json(item.name, messages, device_info, batch_dir, partial=True)
         try:
             navigator.exit_chat(device)
         except Exception:  # noqa: BLE001
             click.echo("  ❌ exit_chat 也失败了")
-        return False, 0
+        return False, len(messages)
 
 
 def _process_folded_chats(

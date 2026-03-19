@@ -163,7 +163,7 @@ def find_all_elements(
     return []
 
 
-def stable_dump(device: Any, max_retries: int = 3, delay: float = 0.5) -> str:
+def stable_dump(device: Any, max_retries: int = 7, delay: float = 2.0) -> str:
     """Return a stable hierarchy dump by comparing consecutive snapshots."""
 
     if max_retries < 1:
