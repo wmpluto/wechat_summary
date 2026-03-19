@@ -85,6 +85,15 @@ def _sanitize_filename(name: str) -> str:
     return sanitized or "unknown"
 
 
+def _message_content_hash(msg: Any) -> str:
+    """Hash a message by sender+content+type for deduplication."""
+    sender = getattr(msg, "sender", "") or ""
+    content = getattr(msg, "content", "") or ""
+    mtype_raw = getattr(msg, "message_type", "")
+    mtype = str(getattr(mtype_raw, "value", mtype_raw))
+    return f"{sender}|{content}|{mtype}"
+
+
 def _save_chat_json(
     chat_name: str,
     messages: list,
@@ -93,17 +102,43 @@ def _save_chat_json(
     *,
     partial: bool = False,
 ) -> Path:
-    """Save messages as a ChatSession JSON file. Returns the saved path."""
-    session = ChatSession(
-        chat_name=chat_name,
-        chat_type=ChatType.PRIVATE,
-        messages=messages,
-        extracted_at=datetime.now(),
-        device_info=device_info,
-    )
+    """Save messages as a ChatSession JSON file with incremental merge.
+
+    If a file for the same chat already exists in batch_dir, its messages are
+    loaded and merged (deduped) with the new messages so that historical data
+    is preserved across runs.
+    """
     sanitized = _sanitize_filename(chat_name)
     suffix = "_partial" if partial else ""
     filepath = batch_dir / f"{sanitized}{suffix}.json"
+
+    # --- incremental merge: load previous messages if file exists ----------
+    merged_messages = list(messages)
+    if filepath.exists():
+        try:
+            old_session = ChatSession.model_validate_json(filepath.read_text(encoding="utf-8"))
+            new_hashes = {_message_content_hash(m) for m in messages}
+            # Prepend old messages that are NOT in the new batch (dedup)
+            old_unique = [
+                m for m in old_session.messages if _message_content_hash(m) not in new_hashes
+            ]
+            if old_unique:
+                merged_messages = old_unique + list(messages)
+                click.echo(
+                    f"  📎 增量合并: 旧={len(old_session.messages)} "
+                    f"新={len(messages)} → 合计={len(merged_messages)}"
+                )
+        except Exception:  # noqa: BLE001
+            # If the old file is corrupt, just overwrite with new data
+            pass
+
+    session = ChatSession(
+        chat_name=chat_name,
+        chat_type=ChatType.PRIVATE,
+        messages=merged_messages,
+        extracted_at=datetime.now(),
+        device_info=device_info,
+    )
     filepath.write_text(
         session.model_dump_json(indent=2, by_alias=True),
         encoding="utf-8",

@@ -10,8 +10,6 @@ import time
 from typing import Any
 import xml.etree.ElementTree as ET
 
-import click
-
 from wechat_summary.config import SelectorConfig
 from wechat_summary.models import ChatMessage, ChatType, MessageType
 from wechat_summary.selectors import find_all_elements, find_element, stable_dump
@@ -95,35 +93,23 @@ class MessageExtractor:
         self.unrecognized_count = 0
 
         for scroll_round in range(self.max_scrolls):
-            click.echo(f"  📖 第{scroll_round + 1}页提取...")
             visible_messages = self.extract_visible_messages(device)
-            click.echo(f"  📖 可见消息: {len(visible_messages)} 条")
             if not visible_messages:
-                click.echo("  📖 无可见消息，停止")
                 break
 
             has_older = False
             new_messages_this_round: list[ChatMessage] = []
-            skipped_old = 0
-            skipped_dup = 0
 
             for msg in visible_messages:
                 if msg.timestamp is not None and msg.timestamp.date() < since_date:
                     has_older = True
-                    skipped_old += 1
                     continue
 
                 msg_hash = self._message_hash(msg)
                 if msg_hash in boundary_hashes:
-                    skipped_dup += 1
                     continue
 
                 new_messages_this_round.append(msg)
-
-            click.echo(
-                f"  📖 新增={len(new_messages_this_round)} "
-                f"跳过(旧)={skipped_old} 跳过(重复)={skipped_dup}"
-            )
 
             # Prepend: each scroll reveals OLDER messages that go BEFORE existing ones
             all_messages = new_messages_this_round + all_messages
@@ -132,10 +118,8 @@ class MessageExtractor:
             boundary_hashes = self._build_boundary_hashes(page_hashes)
 
             if has_older:
-                click.echo("  📖 发现更旧消息，停止滑动")
                 break
             if not new_messages_this_round:
-                click.echo("  📖 无新消息，停止滑动")
                 break
 
             self._scroll_up(device)
