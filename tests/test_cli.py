@@ -41,6 +41,23 @@ def test_extract_help():
     assert "--config" in result.output
     assert "--base-url" in result.output
     assert "--model" in result.output
+    assert "--max-scrolls" in result.output
+
+
+def test_extract_all_help():
+    """Extract-all help should expose expected options."""
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["extract-all", "--help"])
+
+    assert result.exit_code == 0
+    assert "--since" in result.output
+    assert "--max-chats" in result.output
+    assert "--max-scrolls" in result.output
+    assert "--max-list-scrolls" in result.output
+    assert "--include" in result.output
+    assert "--exclude" in result.output
+    assert "--exclude-file" in result.output
 
 
 def test_summarize_help():

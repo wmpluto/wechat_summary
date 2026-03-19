@@ -42,7 +42,7 @@ class MessageExtractor:
         self,
         config: SelectorConfig | None = None,
         overlap_window: int = 5,
-        max_scrolls: int = 50,
+        max_scrolls: int = 0xFFFFFFFF,
     ):
         self.config = config or SelectorConfig.default()
         self.overlap_window = overlap_window

@@ -58,6 +58,8 @@ class WeChatSummaryGUI:
         self.max_chats_var = tk.StringVar(value="")
         self.include_var = tk.StringVar(value="")
         self.exclude_var = tk.StringVar(value="")
+        self.max_scrolls_var = tk.StringVar(value="")
+        self.max_list_scrolls_var = tk.StringVar(value="1000")
         self.base_url_var = tk.StringVar(
             value=os.environ.get("WECHAT_LLM_BASE_URL", "http://localhost:11434/v1")
         )
@@ -153,17 +155,30 @@ class WeChatSummaryGUI:
         ttk.Entry(extract_frame, textvariable=self.max_chats_var, width=8).grid(
             row=2, column=1, sticky="w", pady=4
         )
-        ttk.Label(extract_frame, text="仅包含:").grid(
+        ttk.Label(extract_frame, text="聊天页数上限:").grid(
             row=2, column=2, sticky="e", padx=(16, 6), pady=4
         )
-        ttk.Entry(extract_frame, textvariable=self.include_var).grid(
-            row=2, column=3, sticky="ew", pady=4
+        ttk.Entry(extract_frame, textvariable=self.max_scrolls_var, width=8).grid(
+            row=2, column=3, sticky="w", pady=4
         )
-        ttk.Label(extract_frame, text="排除:").grid(
+        ttk.Label(extract_frame, text="列表滚动上限:").grid(
             row=2, column=4, sticky="e", padx=(16, 6), pady=4
         )
+        ttk.Entry(extract_frame, textvariable=self.max_list_scrolls_var, width=8).grid(
+            row=2, column=5, sticky="w", pady=4
+        )
+
+        ttk.Label(extract_frame, text="仅包含:").grid(
+            row=3, column=0, sticky="e", padx=(0, 6), pady=4
+        )
+        ttk.Entry(extract_frame, textvariable=self.include_var).grid(
+            row=3, column=1, columnspan=2, sticky="ew", pady=4
+        )
+        ttk.Label(extract_frame, text="排除:").grid(
+            row=3, column=3, sticky="e", padx=(16, 6), pady=4
+        )
         ttk.Entry(extract_frame, textvariable=self.exclude_var).grid(
-            row=2, column=5, sticky="ew", pady=4
+            row=3, column=4, columnspan=2, sticky="ew", pady=4
         )
 
         # LLM 设置: 6 columns — label(0) entry(1) btn(2) label(3) entry(4) btn(5)
@@ -461,7 +476,11 @@ class WeChatSummaryGUI:
             device_info = dm.get_device_info(connected)
             dm.check_wechat(connected)
 
-            extractor = MessageExtractor(config=config)
+            extractor_kwargs: dict = {"config": config}
+            max_scrolls_str = self.max_scrolls_var.get().strip()
+            if max_scrolls_str:
+                extractor_kwargs["max_scrolls"] = int(max_scrolls_str)
+            extractor = MessageExtractor(**extractor_kwargs)
 
             if not chat_name:
                 chat_name_detected, _ = extractor.detect_chat_info(connected)
@@ -545,14 +564,21 @@ class WeChatSummaryGUI:
                 self.log(f"输出目录: {batch_dir}")
 
                 navigator = ChatListNavigator(config=config)
-                extractor = MessageExtractor(config=config)
+                extractor_kwargs: dict = {"config": config}
+                max_scrolls_str = self.max_scrolls_var.get().strip()
+                if max_scrolls_str:
+                    extractor_kwargs["max_scrolls"] = int(max_scrolls_str)
+                extractor = MessageExtractor(**extractor_kwargs)
                 store = ChatSessionStore()
+
+                max_list_scrolls_str = self.max_list_scrolls_var.get().strip()
+                max_list_scrolls = int(max_list_scrolls_str) if max_list_scrolls_str else 1000
 
                 total_chats = 0
                 total_messages = 0
                 failed_chats: list[str] = []
 
-                for _ in range(20):
+                for _ in range(max_list_scrolls):
                     if self._stop_event.is_set():
                         self.log("⏹ 已停止")
                         break

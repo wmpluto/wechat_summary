@@ -243,6 +243,12 @@ def cli():
     help="LLM API key (default: 'ollama')",
 )
 @click.option("--config", "config_path", default=None, help="Selector config YAML file")
+@click.option(
+    "--max-scrolls",
+    default=None,
+    type=int,
+    help="Max scroll pages per chat (default: unlimited)",
+)
 def extract(
     since: datetime,
     device: str | None,
@@ -253,6 +259,7 @@ def extract(
     model: str,
     api_key: str,
     config_path: str | None,
+    max_scrolls: int | None,
 ):
     """Extract chat messages from WeChat on connected device."""
     store = ChatSessionStore()
@@ -283,7 +290,10 @@ def extract(
 
         click.echo("正在检测聊天信息...")
         config = load_config(config_path)
-        extractor = MessageExtractor(config=config)
+        extractor_kwargs: dict[str, Any] = {"config": config}
+        if max_scrolls is not None:
+            extractor_kwargs["max_scrolls"] = max_scrolls
+        extractor = MessageExtractor(**extractor_kwargs)
         if chat_name:
             resolved_chat_name = chat_name.strip() or "未知会话"
         else:
@@ -393,6 +403,18 @@ def extract(
 @click.option("--model", default="qwen2.5", envvar="WECHAT_LLM_MODEL", help="LLM model name")
 @click.option("--api-key", default="ollama", envvar="WECHAT_LLM_API_KEY", help="LLM API key")
 @click.option("--config", "config_path", default=None, help="Selector config YAML file")
+@click.option(
+    "--max-scrolls",
+    default=None,
+    type=int,
+    help="Max scroll pages per chat (default: unlimited)",
+)
+@click.option(
+    "--max-list-scrolls",
+    default=1000,
+    type=int,
+    help="Max scroll rounds for the message list (default: 1000)",
+)
 def extract_all(
     since: datetime,
     device: str | None,
@@ -406,6 +428,8 @@ def extract_all(
     model: str,
     api_key: str,
     config_path: str | None,
+    max_scrolls: int | None,
+    max_list_scrolls: int,
 ):
     """Extract messages from all chats in the message list."""
 
@@ -456,13 +480,15 @@ def extract_all(
         click.echo(f"输出目录: {batch_dir}")
 
         navigator = ChatListNavigator(config=config)
-        extractor = MessageExtractor(config=config)
+        extractor_kwargs: dict[str, Any] = {"config": config}
+        if max_scrolls is not None:
+            extractor_kwargs["max_scrolls"] = max_scrolls
+        extractor = MessageExtractor(**extractor_kwargs)
         store = ChatSessionStore()
 
-        max_scrolls = 20
         reached_max = False
 
-        for _ in range(max_scrolls):
+        for _ in range(max_list_scrolls):
             items = navigator.parse_chat_list(connected)
             if not items:
                 break

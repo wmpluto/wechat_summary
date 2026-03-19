@@ -52,6 +52,16 @@ def _build_messages(start_idx: int, count: int, base_time: datetime) -> list[Cha
     return messages
 
 
+class TestMaxScrollsDefault:
+    def test_default_max_scrolls_is_unlimited(self):
+        extractor = MessageExtractor()
+        assert extractor.max_scrolls == 0xFFFFFFFF
+
+    def test_custom_max_scrolls_is_respected(self):
+        extractor = MessageExtractor(max_scrolls=100)
+        assert extractor.max_scrolls == 100
+
+
 class TestExtractVisibleMessages:
     def test_parses_visible_messages_from_fixture_with_correct_types_and_order(self, monkeypatch):
         extractor = MessageExtractor()
