@@ -41,10 +41,12 @@ class MessageExtractor:
         config: SelectorConfig | None = None,
         overlap_window: int = 5,
         max_scrolls: int = 0xFFFFFFFF,
+        max_empty_scrolls: int = 5,
     ):
         self.config = config or SelectorConfig.default()
         self.overlap_window = overlap_window
         self.max_scrolls = max_scrolls
+        self.max_empty_scrolls = max_empty_scrolls
         self._current_timestamp: datetime | None = None
         self.unrecognized_count: int = 0
 
@@ -91,6 +93,7 @@ class MessageExtractor:
         all_messages: list[ChatMessage] = []
         boundary_hashes: set[str] = set()
         self.unrecognized_count = 0
+        consecutive_empty = 0
 
         for scroll_round in range(self.max_scrolls):
             visible_messages = self.extract_visible_messages(device)
@@ -119,8 +122,17 @@ class MessageExtractor:
 
             if has_older:
                 break
-            if not new_messages_this_round:
-                break
+
+            if new_messages_this_round:
+                consecutive_empty = 0
+            else:
+                consecutive_empty += 1
+                if consecutive_empty >= self.max_empty_scrolls:
+                    break
+                # Long message may span multiple screens — keep scrolling
+                self._scroll_up(device)
+                time.sleep(random.uniform(0.8, 1.5))
+                continue
 
             self._scroll_up(device)
             time.sleep(random.uniform(0.8, 1.5))

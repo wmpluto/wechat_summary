@@ -61,6 +61,78 @@ class TestMaxScrollsDefault:
         extractor = MessageExtractor(max_scrolls=100)
         assert extractor.max_scrolls == 100
 
+    def test_default_max_empty_scrolls(self):
+        extractor = MessageExtractor()
+        assert extractor.max_empty_scrolls == 5
+
+
+class TestLongMessageScrollThrough:
+    """When a long message spans multiple screens, the extractor should keep
+    scrolling instead of stopping immediately on the first empty round."""
+
+    def test_scrolls_past_long_message(self, monkeypatch):
+        extractor = MessageExtractor(max_empty_scrolls=3)
+
+        long_msg = ChatMessage(
+            sender="张三",
+            content="这是一条很长的消息" * 100,
+            timestamp=datetime(2026, 3, 17, 10, 0, 0),
+            message_type=MessageType.TEXT,
+            is_self=False,
+        )
+        short_msg = ChatMessage(
+            sender="李四",
+            content="短消息",
+            timestamp=datetime(2026, 3, 17, 9, 0, 0),
+            message_type=MessageType.TEXT,
+            is_self=False,
+        )
+
+        # Page 1: long msg (new)
+        # Page 2: long msg again (dup) — should NOT stop
+        # Page 3: long msg again (dup) — should NOT stop
+        # Page 4: short msg (new) + long msg tail — continues
+        pages = [[long_msg], [long_msg], [long_msg], [short_msg, long_msg], []]
+        monkeypatch.setattr(extractor, "extract_visible_messages", lambda _: pages.pop(0))
+        monkeypatch.setattr("wechat_summary.extractor.random.uniform", lambda a, b: 0.8)
+        monkeypatch.setattr("wechat_summary.extractor.time.sleep", lambda _: None)
+
+        result = extractor.scroll_and_extract(FakeDevice(), since_date=date(2026, 3, 1))
+
+        assert len(result) == 2
+        assert result[0].content == "短消息"
+        assert "很长的消息" in result[1].content
+
+    def test_stops_after_max_empty_scrolls(self, monkeypatch):
+        extractor = MessageExtractor(max_empty_scrolls=2)
+
+        msg = ChatMessage(
+            sender="张三",
+            content="消息",
+            timestamp=datetime(2026, 3, 17, 10, 0, 0),
+            message_type=MessageType.TEXT,
+            is_self=False,
+        )
+
+        # Page 1: msg (new), pages 2-3: same msg (dup x2) — should stop
+        pages = [[msg], [msg], [msg], [msg]]
+        call_count = [0]
+        original_pop = pages.pop
+
+        def counting_extract(_):
+            call_count[0] += 1
+            return pages.pop(0) if pages else []
+
+        monkeypatch.setattr(extractor, "extract_visible_messages", counting_extract)
+        monkeypatch.setattr("wechat_summary.extractor.random.uniform", lambda a, b: 0.8)
+        monkeypatch.setattr("wechat_summary.extractor.time.sleep", lambda _: None)
+
+        result = extractor.scroll_and_extract(FakeDevice(), since_date=date(2026, 3, 1))
+
+        assert len(result) == 1
+        # 1 initial + 2 empty rounds = 3 total extract calls
+        assert call_count[0] == 3
+
 
 class TestExtractVisibleMessages:
     def test_parses_visible_messages_from_fixture_with_correct_types_and_order(self, monkeypatch):
@@ -216,7 +288,7 @@ class TestDetectChatInfo:
 
 class TestScrollAndExtract:
     def test_deduplication_from_real_fixtures_with_overlap(self, monkeypatch):
-        extractor = MessageExtractor()
+        extractor = MessageExtractor(max_empty_scrolls=1)
         device = FakeDevice()
         page_newer = _read_fixture("wechat_personal_chat.xml")
         page_older = _read_fixture("wechat_personal_chat_scrolled.xml")
@@ -268,7 +340,7 @@ class TestScrollAndExtract:
         )
 
     def test_scroll_uses_human_like_delay(self, monkeypatch):
-        extractor = MessageExtractor()
+        extractor = MessageExtractor(max_empty_scrolls=1)
         device = FakeDevice()
 
         page = [
