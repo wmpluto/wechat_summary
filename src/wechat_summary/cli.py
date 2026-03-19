@@ -125,7 +125,7 @@ def _process_single_chat(
             )
             click.echo(f"  💾 已保存: {filepath}")
         else:
-            click.echo(f"  ⚠️  无消息（可能该时间范围内无聊天记录）")
+            click.echo("  ⚠️  无消息（可能该时间范围内无聊天记录）")
 
         navigator.exit_chat(device)
         return True, len(messages)
@@ -685,7 +685,27 @@ def calibrate(device: str | None, config_path: str):
     envvar="WECHAT_LLM_API_KEY",
     help="LLM API key (default: 'ollama')",
 )
-def summarize(input_file: str, output_dir: str, base_url: str, model: str, api_key: str):
+@click.option(
+    "--system-prompt",
+    default=None,
+    type=click.Path(exists=True),
+    help="Custom system prompt file (plain text)",
+)
+@click.option(
+    "--user-template",
+    default=None,
+    type=click.Path(exists=True),
+    help="Custom user template file (use {chat_name} and {messages} placeholders)",
+)
+def summarize(
+    input_file: str,
+    output_dir: str,
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt: str | None,
+    user_template: str | None,
+):
     """Summarize a previously extracted chat session."""
     try:
         llm_config = LLMConfig(
@@ -704,7 +724,15 @@ def summarize(input_file: str, output_dir: str, base_url: str, model: str, api_k
         llm_client = LLMClient(llm_config.base_url, llm_config.api_key, llm_config.model)
 
         click.echo("正在生成总结...")
-        summary = ChatSummarizer(llm_client).summarize(session)
+        if system_prompt or user_template:
+            summarizer = ChatSummarizer.from_prompt_files(
+                llm_client,
+                system_prompt_file=system_prompt,
+                user_template_file=user_template,
+            )
+        else:
+            summarizer = ChatSummarizer(llm_client)
+        summary = summarizer.summarize(session)
 
         input_stem = Path(input_file).stem
         md_path, json_path = _write_summary_outputs(
@@ -737,4 +765,13 @@ def summarize(input_file: str, output_dir: str, base_url: str, model: str, api_k
         sys.exit(1)
 
 
-__all__ = ["calibrate", "cli", "extract", "extract_all", "summarize"]
+@cli.command()
+def gui():
+    """Launch the graphical user interface."""
+    from wechat_summary.gui import WeChatSummaryGUI
+
+    app = WeChatSummaryGUI()
+    app.run()
+
+
+__all__ = ["calibrate", "cli", "extract", "extract_all", "gui", "summarize"]

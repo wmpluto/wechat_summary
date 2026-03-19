@@ -187,6 +187,16 @@ Summarize a previously extracted chat session.
 | `--base-url` | `http://localhost:11434/v1` | LLM API base URL |
 | `--model` | `qwen2.5` | LLM model name |
 | `--api-key` | `ollama` | LLM API key |
+| `--system-prompt` | built-in | Custom system prompt file (plain text) |
+| `--user-template` | built-in | Custom user template file (with `{chat_name}` and `{messages}` placeholders) |
+
+### `wechat-summary gui`
+
+Launch the graphical user interface. All features available via GUI with the same settings as CLI.
+
+```bash
+wechat-summary gui
+```
 
 ## Configuration
 
@@ -251,6 +261,46 @@ wechat-summary summarize --input chat.json \
 ```
 
 Environment variables: `WECHAT_LLM_BASE_URL`, `WECHAT_LLM_MODEL`, `WECHAT_LLM_API_KEY`
+
+Also supports OpenAI Responses API — auto-detects and falls back if server rejects Chat Completions.
+
+### Custom Prompts
+
+Customize the summarization prompts by providing text files:
+
+```bash
+wechat-summary summarize --input chat.json \
+  --system-prompt prompts/system_prompt.txt \
+  --user-template prompts/user_template.txt
+```
+
+**System prompt** (`prompts/system_prompt.txt`) — defines the LLM's role:
+```
+你是一个聊天记录分析助手。请阅读以下微信聊天记录，并生成一段简洁的中文总结。
+总结应涵盖主要讨论内容、关键决定和重要信息。
+```
+
+**User template** (`prompts/user_template.txt`) — must contain `{chat_name}` and `{messages}` placeholders:
+```
+聊天名称：{chat_name}
+以下是聊天记录：
+{messages}
+
+请输出一段中文总结。
+```
+
+Example custom prompt for extracting action items:
+```
+聊天名称：{chat_name}
+以下是聊天记录：
+{messages}
+
+请提取所有待办事项和行动项，按负责人分组列出。
+```
+
+In the GUI, these can be set via the "系统提示词" and "用户模板" fields in the LLM 设置 section.
+
+If not specified, built-in default Chinese prompts are used.
 
 ## Output Structure
 

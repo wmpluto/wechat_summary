@@ -3,3 +3,7 @@ target-version = "py310"
 
 [lint]
 select = ["E", "F", "W"]
+
+[lint.per-file-ignores]
+"src/wechat_summary/llm_client.py" = ["E501"]
+"src/wechat_summary/navigator.py" = ["E501"]

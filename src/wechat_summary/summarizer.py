@@ -18,14 +18,30 @@ class LLMClientLike(Protocol):
     def chat(self, messages: list[dict[str, str]]) -> str: ...
 
 
+DEFAULT_SYSTEM_PROMPT = (
+    "你是一个聊天记录分析助手。请阅读以下微信聊天记录，并生成一段简洁的中文总结。"
+    "总结应涵盖主要讨论内容、关键决定和重要信息。"
+)
+
+DEFAULT_USER_TEMPLATE = (
+    "聊天名称：{chat_name}\n以下是聊天记录：\n{messages}\n\n请输出一段中文总结。"
+)
+
+
 class ChatSummarizer:
-    """Generate an overall Chinese summary for a chat session."""
+    """Generate an overall Chinese summary for a chat session.
+
+    Custom prompts
+    --------------
+    ``system_prompt`` and ``user_template`` can be overridden at init or
+    loaded from text files via :meth:`from_prompt_files`.
+
+    ``user_template`` supports two placeholders:
+    - ``{chat_name}`` — replaced with the chat/session name
+    - ``{messages}``  — replaced with the formatted message text
+    """
 
     TOKEN_LIMIT = 3000
-    SYSTEM_PROMPT = (
-        "你是一个聊天记录分析助手。请阅读以下微信聊天记录，并生成一段简洁的中文总结。"
-        "总结应涵盖主要讨论内容、关键决定和重要信息。"
-    )
 
     _NON_TEXT_PLACEHOLDERS = {
         "IMAGE": "[图片]",
@@ -35,9 +51,44 @@ class ChatSummarizer:
         "SYSTEM": "[系统消息]",
     }
 
-    def __init__(self, llm_client: LLMClientLike):
+    def __init__(
+        self,
+        llm_client: LLMClientLike,
+        *,
+        system_prompt: str | None = None,
+        user_template: str | None = None,
+    ):
         self.llm_client = llm_client
+        self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+        self.user_template = user_template or DEFAULT_USER_TEMPLATE
         self._encoding = tiktoken.get_encoding("cl100k_base")
+
+    @classmethod
+    def from_prompt_files(
+        cls,
+        llm_client: LLMClientLike,
+        *,
+        system_prompt_file: str | None = None,
+        user_template_file: str | None = None,
+    ) -> "ChatSummarizer":
+        """Create a summarizer loading prompts from text files.
+
+        Files should contain plain text. ``user_template_file`` must
+        include ``{chat_name}`` and ``{messages}`` placeholders.
+        """
+        from pathlib import Path
+
+        system_prompt = None
+        user_template = None
+        if system_prompt_file:
+            system_prompt = Path(system_prompt_file).read_text(encoding="utf-8").strip()
+        if user_template_file:
+            user_template = Path(user_template_file).read_text(encoding="utf-8").strip()
+        return cls(
+            llm_client,
+            system_prompt=system_prompt,
+            user_template=user_template,
+        )
 
     def summarize(self, session: Any) -> SummaryResult:
         """Summarize a chat session into one overall summary."""
@@ -70,15 +121,13 @@ class ChatSummarizer:
         return "\n".join(lines)
 
     def _build_prompt(self, formatted_msgs: str, chat_name: str) -> list[dict[str, str]]:
-        """Build Chinese prompt for the LLM."""
-        user_prompt = (
-            f"聊天名称：{chat_name}\n"
-            "以下是聊天记录：\n"
-            f"{formatted_msgs}\n\n"
-            "请输出一段中文总结。"
+        """Build prompt using customizable templates."""
+        user_prompt = self.user_template.format(
+            chat_name=chat_name,
+            messages=formatted_msgs,
         )
         return [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_prompt},
         ]
 
