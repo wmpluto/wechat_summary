@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hierarchy rotation="0">
+  <node index="0" text="" resource-id="" class="android.widget.FrameLayout" package="com.tencent.mm" bounds="[0,0][1080,1920]">
+    <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,0][1080,1920]">
+      <node index="0" text="" resource-id="com.tencent.mm:id/obq" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,0][1080,126]" />
+
+      <node index="1" text="" resource-id="com.tencent.mm:id/bp0" class="androidx.recyclerview.widget.RecyclerView" package="com.tencent.mm" scrollable="true" bounds="[0,126][1080,1760]">
+        <node index="0" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,140][1080,190]">
+          <node index="0" text="10:42" resource-id="com.tencent.mm:id/br1" class="android.widget.TextView" package="com.tencent.mm" bounds="[470,150][620,184]" />
+        </node>
+
+        <node index="1" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,196][1080,336]">
+          <node index="0" text="" resource-id="com.tencent.mm:id/bkj" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,200][1080,332]">
+            <node index="0" text="" resource-id="com.tencent.mm:id/bk4" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[16,210][108,302]">
+              <node index="0" text="" resource-id="com.tencent.mm:id/bk1" class="android.widget.ImageView" package="com.tencent.mm" content-desc="张三头像" bounds="[16,210][108,302]" />
+            </node>
+            <node index="1" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+              <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+                <node index="0" text="你到公司了吗" resource-id="com.tencent.mm:id/bkl" class="android.widget.TextView" package="com.tencent.mm" bounds="[126,224][440,282]" />
+              </node>
+            </node>
+          </node>
+        </node>
+
+        <node index="2" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,340][1080,500]">
+          <node index="0" text="" resource-id="com.tencent.mm:id/bkj" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,346][1080,494]">
+            <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+              <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+                <node index="0" text="快到了" resource-id="com.tencent.mm:id/bkl" class="android.widget.TextView" package="com.tencent.mm" bounds="[690,370][900,444]" />
+              </node>
+            </node>
+            <node index="1" text="" resource-id="com.tencent.mm:id/bk4" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[924,360][1016,452]">
+              <node index="0" text="" resource-id="com.tencent.mm:id/bk1" class="android.widget.ImageView" package="com.tencent.mm" content-desc="李四头像" bounds="[924,360][1016,452]" />
+            </node>
+          </node>
+        </node>
+
+        <node index="3" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,506][1080,556]">
+          <node index="0" text="周一 10:44" resource-id="com.tencent.mm:id/br1" class="android.widget.TextView" package="com.tencent.mm" bounds="[440,516][640,548]" />
+        </node>
+
+        <node index="4" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,562][1080,702]">
+          <node index="0" text="" resource-id="com.tencent.mm:id/bkj" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,568][1080,696]">
+            <node index="0" text="" resource-id="com.tencent.mm:id/bk4" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[16,578][108,670]">
+              <node index="0" text="" resource-id="com.tencent.mm:id/bk1" class="android.widget.ImageView" package="com.tencent.mm" content-desc="张三头像" bounds="[16,578][108,670]" />
+            </node>
+            <node index="1" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+              <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+                <node index="0" text="好的，明白" resource-id="com.tencent.mm:id/bkl" class="android.widget.TextView" package="com.tencent.mm" bounds="[126,592][360,650]" />
+              </node>
+            </node>
+          </node>
+        </node>
+
+        <node index="5" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,708][1080,868]">
+          <node index="0" text="" resource-id="com.tencent.mm:id/bkj" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,714][1080,862]">
+            <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+              <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+                <node index="0" text="会议记录我整理好了" resource-id="com.tencent.mm:id/bkl" class="android.widget.TextView" package="com.tencent.mm" bounds="[550,736][900,830]" />
+              </node>
+            </node>
+            <node index="1" text="" resource-id="com.tencent.mm:id/bk4" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[924,726][1016,818]">
+              <node index="0" text="" resource-id="com.tencent.mm:id/bk1" class="android.widget.ImageView" package="com.tencent.mm" content-desc="李四头像" bounds="[924,726][1016,818]" />
+            </node>
+          </node>
+        </node>
+
+        <node index="6" text="" resource-id="com.tencent.mm:id/bn1" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[0,874][1080,1048]">
+          <node index="0" text="" resource-id="com.tencent.mm:id/bkj" class="android.widget.LinearLayout" package="com.tencent.mm" bounds="[0,882][1080,1042]">
+            <node index="0" text="" resource-id="com.tencent.mm:id/bk4" class="android.widget.RelativeLayout" package="com.tencent.mm" bounds="[16,898][108,990]">
+              <node index="0" text="" resource-id="com.tencent.mm:id/bk1" class="android.widget.ImageView" package="com.tencent.mm" content-desc="张三头像" bounds="[16,898][108,990]" />
+            </node>
+            <node index="1" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+              <node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="com.tencent.mm">
+                <node index="0" text="" resource-id="com.tencent.mm:id/bkg" class="android.widget.FrameLayout" package="com.tencent.mm" content-desc="图片" bounds="[126,906][460,1038]" />
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+
+      <node index="2" text="" resource-id="com.tencent.mm:id/bkk" class="android.widget.EditText" package="com.tencent.mm" bounds="[0,1760][1080,1920]" />
+    </node>
+  </node>
+</hierarchy>

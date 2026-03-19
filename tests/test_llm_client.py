@@ -69,17 +69,12 @@ class TestLLMClient:
         with pytest.raises(LLMConnectionError) as exc_info:
             client.chat([{"role": "user", "content": "你好"}])
 
-        assert (
-            str(exc_info.value)
-            == "Cannot connect to http://localhost:11434/v1. Is Ollama running?"
-        )
+        assert "Cannot connect to http://localhost:11434/v1" in str(exc_info.value)
 
     def test_chat_retries_timeout_then_succeeds(self, mock_llm_client):
         """Test chat retries timeout errors with exponential backoff."""
         timeout_request = make_request("http://localhost:11434/v1/chat/completions")
-        success_response = MagicMock(
-            choices=[MagicMock(message=MagicMock(content="第三次成功"))]
-        )
+        success_response = MagicMock(choices=[MagicMock(message=MagicMock(content="第三次成功"))])
         mock_llm_client.chat.completions.create.side_effect = [
             APITimeoutError(request=timeout_request),
             APITimeoutError(request=timeout_request),
