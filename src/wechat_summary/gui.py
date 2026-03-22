@@ -80,8 +80,16 @@ class WeChatSummaryGUI:
         self.model_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_MODEL", "Qwen3.5-35B-A3B"))
         self.api_key_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_API_KEY", "no-key"))
         self.summarize_var = tk.BooleanVar(value=True)
-        self.system_prompt_var = tk.StringVar(value="")
-        self.user_template_var = tk.StringVar(value="")
+        self.system_prompt_var = tk.StringVar(
+            value="./prompts/system_prompt.txt"
+            if Path("./prompts/system_prompt.txt").is_file()
+            else ""
+        )
+        self.user_template_var = tk.StringVar(
+            value="./prompts/user_template.txt"
+            if Path("./prompts/user_template.txt").is_file()
+            else ""
+        )
 
         self._log_queue: queue.Queue[str] = queue.Queue()
         self._stop_event = threading.Event()
