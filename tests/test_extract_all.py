@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from wechat_summary.cli import _sanitize_filename, cli
+from wechat_summary.cli import cli
+from wechat_summary.orchestrator import _sanitize_filename
 from wechat_summary.models import ChatListItem
 
 
@@ -46,9 +47,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
             patch("wechat_summary.cli.load_config") as mock_load_config,
         ):
             mock_dm = mock_dm_cls.return_value
@@ -88,9 +89,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -122,9 +123,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor"),
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor"),
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -148,9 +149,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -191,9 +192,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -226,9 +227,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -259,9 +260,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -290,9 +291,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -323,9 +324,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device
@@ -362,9 +363,9 @@ class TestExtractAllCommand:
 
         with (
             patch("wechat_summary.cli.DeviceManager") as mock_dm_cls,
-            patch("wechat_summary.cli.ChatListNavigator") as mock_nav_cls,
-            patch("wechat_summary.cli.MessageExtractor"),
-            patch("wechat_summary.cli.ChatSessionStore"),
+            patch("wechat_summary.orchestrator.ChatListNavigator") as mock_nav_cls,
+            patch("wechat_summary.orchestrator.MessageExtractor"),
+            patch("wechat_summary.orchestrator.ChatSessionStore"),
         ):
             mock_dm = mock_dm_cls.return_value
             mock_dm.connect.return_value = mock_device

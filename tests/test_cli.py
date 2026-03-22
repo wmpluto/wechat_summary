@@ -81,8 +81,8 @@ def test_extract_with_mock_device(mock_device, sample_messages, tmp_path):
 
     with (
         patch("wechat_summary.cli.DeviceManager") as mock_device_manager_cls,
-        patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-        patch("wechat_summary.cli.ChatSessionStore") as mock_store_cls,
+        patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+        patch("wechat_summary.orchestrator.ChatSessionStore") as mock_store_cls,
     ):
         mock_device_manager = mock_device_manager_cls.return_value
         mock_device_manager.connect.return_value = mock_device
@@ -130,10 +130,10 @@ def test_extract_with_summarize_flag(mock_device, sample_messages, tmp_path):
 
     with (
         patch("wechat_summary.cli.DeviceManager") as mock_device_manager_cls,
-        patch("wechat_summary.cli.MessageExtractor") as mock_extractor_cls,
-        patch("wechat_summary.cli.ChatSessionStore") as mock_store_cls,
-        patch("wechat_summary.cli.LLMClient") as mock_llm_client_cls,
-        patch("wechat_summary.cli.ChatSummarizer") as mock_summarizer_cls,
+        patch("wechat_summary.orchestrator.MessageExtractor") as mock_extractor_cls,
+        patch("wechat_summary.orchestrator.ChatSessionStore") as mock_store_cls,
+        patch("wechat_summary.orchestrator.LLMClient") as mock_llm_client_cls,
+        patch("wechat_summary.orchestrator.ChatSummarizer") as mock_summarizer_cls,
     ):
         mock_device_manager = mock_device_manager_cls.return_value
         mock_device_manager.connect.return_value = mock_device
@@ -185,9 +185,9 @@ def test_summarize_with_mock_llm(sample_chat_session, tmp_path):
     input_file.write_text("{}", encoding="utf-8")
 
     with (
-        patch("wechat_summary.cli.ChatSessionStore") as mock_store_cls,
-        patch("wechat_summary.cli.LLMClient") as mock_llm_client_cls,
-        patch("wechat_summary.cli.ChatSummarizer") as mock_summarizer_cls,
+        patch("wechat_summary.orchestrator.ChatSessionStore") as mock_store_cls,
+        patch("wechat_summary.orchestrator.LLMClient") as mock_llm_client_cls,
+        patch("wechat_summary.orchestrator.ChatSummarizer") as mock_summarizer_cls,
     ):
         mock_store = mock_store_cls.return_value
         mock_store.load.return_value = sample_chat_session

@@ -13,16 +13,11 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 
 from wechat_summary.calibrator import Calibrator
-from wechat_summary.cli import _process_folded_chats, _process_single_chat, _write_summary_outputs
 from wechat_summary.config import ChatViewConfig, SelectorConfig, load_config
 from wechat_summary.device import DeviceManager
-from wechat_summary.extractor import MessageExtractor
-from wechat_summary.llm_client import LLMClient
-from wechat_summary.models import ChatSession, ChatType
-from wechat_summary.navigator import ChatListNavigator
-from wechat_summary.persistence import ChatSessionStore
+from wechat_summary.models import LLMConfig
+from wechat_summary.orchestrator import extract_all_chats, extract_single, summarize_file
 from wechat_summary.selectors import stable_dump
-from wechat_summary.summarizer import ChatSummarizer
 
 
 class _GUILogWriter(io.TextIOBase):
@@ -38,6 +33,18 @@ class _GUILogWriter(io.TextIOBase):
 
     def flush(self) -> None:
         return
+
+
+class GUICallbacks:
+    def __init__(self, log_func, stop_event: threading.Event):
+        self._log = log_func
+        self._stop = stop_event
+
+    def log(self, message: str) -> None:
+        self._log(message)
+
+    def should_stop(self) -> bool:
+        return self._stop.is_set()
 
 
 class WeChatSummaryGUI:
@@ -320,18 +327,6 @@ class WeChatSummaryGUI:
         if file_path:
             self.user_template_var.set(file_path)
 
-    def _build_summarizer(self, llm_client: LLMClient) -> ChatSummarizer:
-        """Build a ChatSummarizer, loading custom prompts if specified."""
-        sys_file = self.system_prompt_var.get().strip() or None
-        usr_file = self.user_template_var.get().strip() or None
-        if sys_file or usr_file:
-            return ChatSummarizer.from_prompt_files(
-                llm_client,
-                system_prompt_file=sys_file,
-                user_template_file=usr_file,
-            )
-        return ChatSummarizer(llm_client)
-
     def _run_in_thread(self, target, *args) -> None:
         if self._running_thread and self._running_thread.is_alive():
             self.log("⚠️ 操作正在进行中...")
@@ -440,27 +435,8 @@ class WeChatSummaryGUI:
     def _on_extract(self) -> None:
         self._run_in_thread(self._do_extract)
 
-    def _do_summarize_session(self, session: ChatSession, filepath: str, output_dir: str) -> None:
-        base_url = self.base_url_var.get().strip()
-        model = self.model_var.get().strip()
-        api_key = self.api_key_var.get().strip()
-
-        self.log("正在连接 LLM...")
-        llm_client = LLMClient(base_url, api_key, model)
-        summarizer = self._build_summarizer(llm_client)
-
-        self.log("正在生成总结...")
-        result = summarizer.summarize(session)
-
-        target_stem = Path(filepath).stem
-        md_path, json_path = _write_summary_outputs(
-            session, result.summary, output_dir, target_stem
-        )
-        self.log("✅ 总结已保存:")
-        self.log(f"  Markdown: {md_path}")
-        self.log(f"  JSON: {json_path}")
-
     def _do_extract(self) -> None:
+        callbacks = GUICallbacks(self.log, self._stop_event)
         try:
             since_str = self.since_var.get().strip()
             since_date = date.fromisoformat(since_str)
@@ -470,42 +446,41 @@ class WeChatSummaryGUI:
 
             config = load_config(config_path if config_path else None)
 
-            self.log("正在连接设备...")
+            llm_config = LLMConfig(
+                base_url=self.base_url_var.get().strip(),
+                api_key=self.api_key_var.get().strip(),
+                model=self.model_var.get().strip(),
+                temperature=0.3,
+                max_tokens=4096,
+            )
+
+            system_prompt_file = self.system_prompt_var.get().strip() or None
+            user_template_file = self.user_template_var.get().strip() or None
+
+            callbacks.log("正在连接设备...")
             dm = DeviceManager()
             connected = dm.connect(serial=self.device_var.get().strip() or None)
             device_info = dm.get_device_info(connected)
             dm.check_wechat(connected)
 
-            extractor_kwargs: dict = {"config": config}
             max_scrolls_str = self.max_scrolls_var.get().strip()
-            if max_scrolls_str:
-                extractor_kwargs["max_scrolls"] = int(max_scrolls_str)
-            extractor = MessageExtractor(**extractor_kwargs)
+            max_scrolls = int(max_scrolls_str) if max_scrolls_str else None
 
-            if not chat_name:
-                chat_name_detected, _ = extractor.detect_chat_info(connected)
-                chat_name = chat_name_detected or "未知会话"
-
-            self.log(f"正在提取: {chat_name} (从 {since_date} 至今)...")
-            messages = extractor.scroll_and_extract(connected, since_date)
-            self.log(f"提取完成: {len(messages)} 条消息")
-
-            if messages:
-                session = ChatSession(
-                    chat_name=chat_name,
-                    chat_type=ChatType.PRIVATE,
-                    messages=messages,
-                    extracted_at=datetime.now(),
-                    device_info=device_info,
-                )
-                store = ChatSessionStore()
-                filepath = store.save(session, output_dir=output_dir)
-                self.log(f"已保存至: {filepath}")
-
-                if self.summarize_var.get() and not self._stop_event.is_set():
-                    self._do_summarize_session(session, filepath, output_dir)
-            else:
-                self.log("⚠️ 无消息")
+            should_summarize = self.summarize_var.get() and not self._stop_event.is_set()
+            extract_single(
+                connected,
+                config,
+                since_date,
+                chat_name,
+                output_dir,
+                device_info,
+                callbacks,
+                max_scrolls=max_scrolls,
+                summarize=should_summarize,
+                llm_config=llm_config,
+                system_prompt_file=system_prompt_file,
+                user_template_file=user_template_file,
+            )
         except Exception as exc:  # noqa: BLE001
             self.log(f"❌ 提取失败: {exc}")
         finally:
@@ -517,6 +492,7 @@ class WeChatSummaryGUI:
     def _do_extract_all(self) -> None:
         writer = _GUILogWriter(self.log)
         with contextlib.redirect_stdout(writer):
+            callbacks = GUICallbacks(self.log, self._stop_event)
             try:
                 since_date = date.fromisoformat(self.since_var.get().strip())
                 today = date.today()
@@ -555,155 +531,33 @@ class WeChatSummaryGUI:
                 connected = dm.connect(serial=self.device_var.get().strip() or None)
                 device_info = dm.get_device_info(connected)
                 dm.check_wechat(connected)
-                self.log("正在启动微信...")
+                callbacks.log("正在启动微信...")
                 dm.launch_wechat(connected)
 
                 folder_name = f"{since_date.isoformat()}_{today.isoformat()}"
                 batch_dir = Path(self.output_dir_var.get().strip() or "./output") / folder_name
                 batch_dir.mkdir(parents=True, exist_ok=True)
-                self.log(f"输出目录: {batch_dir}")
+                callbacks.log(f"输出目录: {batch_dir}")
 
-                navigator = ChatListNavigator(config=config)
-                extractor_kwargs: dict = {"config": config}
                 max_scrolls_str = self.max_scrolls_var.get().strip()
-                if max_scrolls_str:
-                    extractor_kwargs["max_scrolls"] = int(max_scrolls_str)
-                extractor = MessageExtractor(**extractor_kwargs)
-                store = ChatSessionStore()
+                max_scrolls = int(max_scrolls_str) if max_scrolls_str else None
 
                 max_list_scrolls_str = self.max_list_scrolls_var.get().strip()
                 max_list_scrolls = int(max_list_scrolls_str) if max_list_scrolls_str else 1000
 
-                total_chats = 0
-                total_messages = 0
-                failed_chats: list[str] = []
-
-                for _ in range(max_list_scrolls):
-                    if self._stop_event.is_set():
-                        self.log("⏹ 已停止")
-                        break
-
-                    items = navigator.parse_chat_list(connected)
-                    if not items:
-                        break
-
-                    filtered = navigator.filter_items(items, since_date, include_list, exclude_list)
-
-                    if navigator.should_stop_scrolling(items, since_date):
-                        for item in filtered:
-                            if navigator.is_processed(item.name):
-                                continue
-                            if max_chats and total_chats >= max_chats:
-                                break
-                            if self._stop_event.is_set():
-                                break
-                            if item.is_folded:
-                                self.log("\n📂 进入折叠的聊天...")
-                                if navigator.enter_folded_chats(connected):
-                                    remaining = (max_chats - total_chats) if max_chats else None
-                                    fc, fm, ff = _process_folded_chats(
-                                        connected,
-                                        navigator,
-                                        extractor,
-                                        store,
-                                        since_date,
-                                        batch_dir,
-                                        device_info,
-                                        include_list,
-                                        exclude_list,
-                                        remaining,
-                                    )
-                                    total_chats += fc
-                                    total_messages += fm
-                                    failed_chats.extend(ff)
-                                    navigator.exit_folded_chats(connected)
-                                navigator.mark_processed(item.name)
-                                continue
-
-                            total_chats += 1
-                            self.log(f"\n💬 ({total_chats}) {item.name}...")
-                            success, count = _process_single_chat(
-                                connected,
-                                navigator,
-                                extractor,
-                                store,
-                                item,
-                                since_date,
-                                batch_dir,
-                                device_info,
-                            )
-                            if success:
-                                total_messages += count
-                                self.log(f"  ✅ {count} 条消息")
-                            else:
-                                failed_chats.append(item.name)
-                                self.log("  ❌ 提取失败")
-                            navigator.mark_processed(item.name)
-                        break
-
-                    for item in filtered:
-                        if navigator.is_processed(item.name):
-                            continue
-                        if max_chats and total_chats >= max_chats:
-                            break
-                        if self._stop_event.is_set():
-                            break
-
-                        if item.is_folded:
-                            self.log("\n📂 进入折叠的聊天...")
-                            if navigator.enter_folded_chats(connected):
-                                remaining = (max_chats - total_chats) if max_chats else None
-                                fc, fm, ff = _process_folded_chats(
-                                    connected,
-                                    navigator,
-                                    extractor,
-                                    store,
-                                    since_date,
-                                    batch_dir,
-                                    device_info,
-                                    include_list,
-                                    exclude_list,
-                                    remaining,
-                                )
-                                total_chats += fc
-                                total_messages += fm
-                                failed_chats.extend(ff)
-                                navigator.exit_folded_chats(connected)
-                            navigator.mark_processed(item.name)
-                            continue
-
-                        total_chats += 1
-                        self.log(f"\n💬 ({total_chats}) {item.name}...")
-                        success, count = _process_single_chat(
-                            connected,
-                            navigator,
-                            extractor,
-                            store,
-                            item,
-                            since_date,
-                            batch_dir,
-                            device_info,
-                        )
-                        if success:
-                            total_messages += count
-                            self.log(f"  ✅ {count} 条消息")
-                        else:
-                            failed_chats.append(item.name)
-                            self.log("  ❌ 提取失败")
-                        navigator.mark_processed(item.name)
-
-                    if max_chats and total_chats >= max_chats:
-                        self.log(f"\n已达到最大数量 ({max_chats})")
-                        break
-
-                    if not navigator.scroll_chat_list(connected):
-                        break
-
-                self.log(f"\n{'=' * 40}")
-                self.log(f"完成！共处理 {total_chats} 个会话，提取 {total_messages} 条消息")
-                self.log(f"输出目录: {batch_dir}")
-                if failed_chats:
-                    self.log(f"⚠️ {len(failed_chats)} 个失败: {', '.join(failed_chats)}")
+                extract_all_chats(
+                    connected,
+                    config,
+                    since_date,
+                    str(batch_dir),
+                    device_info,
+                    callbacks,
+                    max_chats=max_chats,
+                    include_list=include_list,
+                    exclude_list=exclude_list,
+                    max_scrolls=max_scrolls,
+                    max_list_scrolls=max_list_scrolls,
+                )
             except Exception as exc:  # noqa: BLE001
                 self.log(f"❌ 全量提取失败: {exc}")
             finally:
@@ -721,30 +575,24 @@ class WeChatSummaryGUI:
         self._run_in_thread(self._do_summarize, input_file)
 
     def _do_summarize(self, input_file: str) -> None:
+        callbacks = GUICallbacks(self.log, self._stop_event)
         try:
-            self.log(f"正在加载: {input_file}")
-            store = ChatSessionStore()
-            session = store.load(input_file)
-
-            base_url = self.base_url_var.get().strip()
-            model = self.model_var.get().strip()
-            api_key = self.api_key_var.get().strip()
-
-            self.log("正在连接 LLM...")
-            llm_client = LLMClient(base_url, api_key, model)
-
-            self.log("正在生成总结...")
-            summarizer = self._build_summarizer(llm_client)
-            result = summarizer.summarize(session)
-
-            output_dir = self.output_dir_var.get().strip() or "./output"
-            target_stem = Path(input_file).stem
-            md_path, json_path = _write_summary_outputs(
-                session, result.summary, output_dir, target_stem
+            llm_config = LLMConfig(
+                base_url=self.base_url_var.get().strip(),
+                api_key=self.api_key_var.get().strip(),
+                model=self.model_var.get().strip(),
+                temperature=0.3,
+                max_tokens=4096,
             )
-            self.log("✅ 总结已保存:")
-            self.log(f"  Markdown: {md_path}")
-            self.log(f"  JSON: {json_path}")
+            output_dir = self.output_dir_var.get().strip() or "./output"
+            summarize_file(
+                input_file,
+                output_dir,
+                llm_config,
+                callbacks,
+                system_prompt_file=self.system_prompt_var.get().strip() or None,
+                user_template_file=self.user_template_var.get().strip() or None,
+            )
         except Exception as exc:  # noqa: BLE001
             self.log(f"❌ 总结失败: {exc}")
         finally:
