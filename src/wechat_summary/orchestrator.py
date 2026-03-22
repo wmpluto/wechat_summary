@@ -599,6 +599,12 @@ def extract_all_chats(
             filtered = navigator.filter_items(items, since_date, include_list, exclude_list)
             stop_scrolling = navigator.should_stop_scrolling(items, since_date)
 
+            # Scroll at 2/3 of the page to refresh the list early.
+            # is_processed() ensures no double-processing after re-parse.
+            scroll_at = max(1, len(filtered) * 2 // 3)
+            processed_in_page = 0
+            scrolled_mid_page = False
+
             for item in filtered:
                 if callbacks.should_stop():
                     callbacks.log("⏹ 已停止")
@@ -636,33 +642,42 @@ def extract_all_chats(
                         failed_chats.extend(folded_failed)
                         navigator.exit_folded_chats(device)
                     navigator.mark_processed(item.name)
-                    continue
-
-                total_chats += 1
-                callbacks.log(f"\n💬 ({total_chats}) {item.name}...")
-                success, msg_count, filepath = _process_single_chat(
-                    device,
-                    navigator,
-                    extractor,
-                    store,
-                    item,
-                    since_date,
-                    batch_dir,
-                    device_info,
-                    callbacks,
-                )
-                if success:
-                    total_messages += msg_count
-                    callbacks.log(f"  ✅ {msg_count} 条消息")
-                    if summary_queue is not None and filepath is not None and msg_count > 0:
-                        summary_queue.put(filepath)
+                    processed_in_page += 1
                 else:
-                    failed_chats.append(item.name)
-                    callbacks.log("  ❌ 提取失败")
-                navigator.mark_processed(item.name)
+                    total_chats += 1
+                    callbacks.log(f"\n💬 ({total_chats}) {item.name}...")
+                    success, msg_count, filepath = _process_single_chat(
+                        device,
+                        navigator,
+                        extractor,
+                        store,
+                        item,
+                        since_date,
+                        batch_dir,
+                        device_info,
+                        callbacks,
+                    )
+                    if success:
+                        total_messages += msg_count
+                        callbacks.log(f"  ✅ {msg_count} 条消息")
+                        if summary_queue is not None and filepath is not None and msg_count > 0:
+                            summary_queue.put(filepath)
+                    else:
+                        failed_chats.append(item.name)
+                        callbacks.log("  ❌ 提取失败")
+                    navigator.mark_processed(item.name)
+                    processed_in_page += 1
+
+                # Mid-page scroll: refresh the list after processing 2/3 of items
+                if processed_in_page >= scroll_at and not stop_scrolling:
+                    if navigator.scroll_chat_list(device):
+                        scrolled_mid_page = True
+                        break  # re-parse list in next outer iteration
 
             if reached_max:
                 break
+            if scrolled_mid_page:
+                continue  # already scrolled, go re-parse
             if stop_scrolling:
                 break
             if not navigator.scroll_chat_list(device):
