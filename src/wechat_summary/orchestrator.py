@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from datetime import date, datetime
 from pathlib import Path
+from queue import Queue
 from typing import Any, Protocol
 
 from wechat_summary.config import SelectorConfig
@@ -134,7 +136,7 @@ def _process_single_chat(
     batch_dir: Path,
     device_info: str,
     callbacks: OrchestratorCallbacks,
-) -> tuple[bool, int]:
+) -> tuple[bool, int, Path | None]:
     """Enter chat, extract messages, save JSON, and exit chat."""
 
     _ = store
@@ -143,31 +145,40 @@ def _process_single_chat(
         callbacks.log(f"  📥 enter_chat: {item.name}")
         if not navigator.enter_chat(device, item):
             callbacks.log(f"  ❌ 进入聊天失败: {item.name}")
-            return False, 0
+            return False, 0, None
 
         callbacks.log(f"  📜 scroll_and_extract: since={since_date}")
         messages = extractor.scroll_and_extract(device, since_date)
         callbacks.log(f"  📊 提取结果: {len(messages)} 条消息")
 
         if messages:
-            _save_chat_json(item.name, messages, device_info, batch_dir, callbacks)
+            filepath = _save_chat_json(item.name, messages, device_info, batch_dir, callbacks)
         else:
+            filepath = None
             callbacks.log("  ⚠️  无消息（可能该时间范围内无聊天记录）")
 
         navigator.exit_chat(device)
-        return True, len(messages)
+        return True, len(messages), filepath
     except KeyboardInterrupt:
         raise
     except Exception as exc:  # noqa: BLE001
         callbacks.log(f"  ❌ 提取异常: {type(exc).__name__}: {exc}")
+        filepath: Path | None = None
         if messages:
             callbacks.log(f"  💾 正在保存已提取的 {len(messages)} 条消息...")
-            _save_chat_json(item.name, messages, device_info, batch_dir, callbacks, partial=True)
+            filepath = _save_chat_json(
+                item.name,
+                messages,
+                device_info,
+                batch_dir,
+                callbacks,
+                partial=True,
+            )
         try:
             navigator.exit_chat(device)
         except Exception:  # noqa: BLE001
             callbacks.log("  ❌ exit_chat 也失败了")
-        return False, len(messages)
+        return False, len(messages), filepath
 
 
 def _process_folded_chats(
@@ -182,6 +193,7 @@ def _process_folded_chats(
     exclude_list: list[str] | None,
     max_chats_remaining: int | None,
     callbacks: OrchestratorCallbacks,
+    summary_queue: Queue | None = None,
 ) -> tuple[int, int, list[str]]:
     """Process all qualifying chats inside the folded chats view."""
 
@@ -203,7 +215,7 @@ def _process_folded_chats(
 
         chats += 1
         callbacks.log(f"  📂 折叠 ({chats}) {item.name}...")
-        success, count = _process_single_chat(
+        success, count, filepath = _process_single_chat(
             device,
             navigator,
             extractor,
@@ -217,6 +229,8 @@ def _process_folded_chats(
         if success:
             messages += count
             callbacks.log(f"    ✅ {count} 条消息")
+            if summary_queue is not None and filepath is not None and count > 0:
+                summary_queue.put(filepath)
         else:
             failed.append(item.name)
             callbacks.log("    ❌ 提取失败")
@@ -273,6 +287,140 @@ def summarize_file(
     callbacks.log(f"总结已保存至: {md_path}")
     callbacks.log(f"JSON已保存至: {json_path}")
     return md_path, json_path
+
+
+def summarize_one(
+    json_path: str | Path,
+    summary_dir: str | Path,
+    llm_config: LLMConfig,
+    callbacks: OrchestratorCallbacks,
+    *,
+    system_prompt_file: str | None = None,
+    user_template_file: str | None = None,
+) -> tuple[Path, Path] | None:
+    """Summarize a single chat JSON file.
+
+    Writes to summary_dir/{stem}_summary.md and summary_dir/{stem}_summary.json.
+    Returns (md_path, json_path) on success, None if skipped or failed.
+    Skips if summary_dir/{stem}_summary.md already exists.
+    Never raises — logs errors and returns None.
+    """
+    json_path = Path(json_path)
+    summary_dir = Path(summary_dir)
+    summary_dir.mkdir(parents=True, exist_ok=True)
+
+    stem = json_path.stem
+    md_path = summary_dir / f"{stem}_summary.md"
+    if md_path.exists():
+        callbacks.log(f"  ⏭ 跳过 (已有总结): {stem}")
+        return None
+
+    try:
+        callbacks.log(f"  📝 正在总结: {stem}...")
+        session = ChatSession.model_validate_json(json_path.read_text(encoding="utf-8"))
+        result = summarize_session(
+            session,
+            llm_config,
+            callbacks,
+            system_prompt_file=system_prompt_file,
+            user_template_file=user_template_file,
+        )
+        md_p, json_p = _write_summary_outputs(session, result.summary, str(summary_dir), stem)
+        callbacks.log(f"  ✅ 总结完成: {stem}")
+        return md_p, json_p
+    except Exception as exc:  # noqa: BLE001
+        callbacks.log(f"  ⚠️ 总结失败 ({stem}): {exc}")
+        return None
+
+
+def summarize_folder(
+    input_dir: str | Path,
+    llm_config: LLMConfig,
+    callbacks: OrchestratorCallbacks,
+    *,
+    system_prompt_file: str | None = None,
+    user_template_file: str | None = None,
+) -> tuple[int, int, int]:
+    """Summarize all chat JSONs in a directory.
+
+    Writes summaries to input_dir/summary/.
+    Skips files already summarized and *_partial.json files.
+    Returns (succeeded, skipped, failed).
+    """
+    input_dir = Path(input_dir)
+    summary_dir = input_dir / "summary"
+
+    json_files = sorted(
+        [f for f in input_dir.glob("*.json") if not f.name.endswith("_partial.json")],
+        key=lambda f: f.stat().st_mtime,
+    )
+
+    if not json_files:
+        callbacks.log("未找到聊天记录 JSON 文件")
+        return 0, 0, 0
+
+    succeeded = 0
+    skipped = 0
+    failed = 0
+
+    callbacks.log(f"扫描到 {len(json_files)} 个聊天记录")
+
+    for json_file in json_files:
+        if callbacks.should_stop():
+            callbacks.log("⏹ 已停止")
+            break
+        stem = json_file.stem
+        md_check = summary_dir / f"{stem}_summary.md"
+        if md_check.exists():
+            callbacks.log(f"  ⏭ 跳过 (已有总结): {stem}")
+            skipped += 1
+            continue
+        result = summarize_one(
+            json_file,
+            summary_dir,
+            llm_config,
+            callbacks,
+            system_prompt_file=system_prompt_file,
+            user_template_file=user_template_file,
+        )
+        if result is not None:
+            succeeded += 1
+        else:
+            failed += 1
+
+    callbacks.log(f"\n{'=' * 40}")
+    callbacks.log(f"总结完成: {succeeded} 成功, {skipped} 跳过, {failed} 失败")
+    return succeeded, skipped, failed
+
+
+def _summarize_worker(
+    summary_queue: Queue,
+    summary_dir: Path,
+    llm_config: LLMConfig,
+    callbacks: OrchestratorCallbacks,
+    *,
+    system_prompt_file: str | None = None,
+    user_template_file: str | None = None,
+) -> None:
+    """Background worker that consumes filepaths from queue and summarizes them."""
+    while True:
+        filepath = summary_queue.get()
+        if filepath is None:
+            summary_queue.task_done()
+            break
+        try:
+            summarize_one(
+                filepath,
+                summary_dir,
+                llm_config,
+                callbacks,
+                system_prompt_file=system_prompt_file,
+                user_template_file=user_template_file,
+            )
+        except Exception as exc:  # noqa: BLE001
+            callbacks.log(f"  ⚠️ 总结异常: {exc}")
+        finally:
+            summary_queue.task_done()
 
 
 def extract_single(
@@ -385,6 +533,10 @@ def extract_all_chats(
     exclude_list: list[str] | None = None,
     max_scrolls: int | None = None,
     max_list_scrolls: int = 1000,
+    summarize: bool = False,
+    llm_config: LLMConfig | None = None,
+    system_prompt_file: str | None = None,
+    user_template_file: str | None = None,
 ) -> tuple[int, int, list[str]]:
     total_chats = 0
     total_messages = 0
@@ -399,6 +551,39 @@ def extract_all_chats(
         extractor_kwargs["max_scrolls"] = max_scrolls
     extractor = MessageExtractor(**extractor_kwargs)
     store = ChatSessionStore()
+
+    summary_queue: Queue | None = None
+    summary_thread: threading.Thread | None = None
+    summary_stopped = False
+
+    def _stop_summary_thread() -> None:
+        nonlocal summary_stopped
+        if summary_stopped:
+            return
+        if summary_queue is not None and summary_thread is not None:
+            summary_queue.put(None)
+            callbacks.log("⏳ 等待总结线程完成...")
+            summary_thread.join()
+            callbacks.log("✅ 总结线程已结束")
+        summary_stopped = True
+
+    if summarize:
+        if llm_config is None:
+            raise ValueError("llm_config is required when summarize=True")
+        summary_dir = batch_dir / "summary"
+        summary_dir.mkdir(parents=True, exist_ok=True)
+        summary_queue = Queue()
+        summary_thread = threading.Thread(
+            target=_summarize_worker,
+            args=(summary_queue, summary_dir, llm_config, callbacks),
+            kwargs={
+                "system_prompt_file": system_prompt_file,
+                "user_template_file": user_template_file,
+            },
+            daemon=True,
+        )
+        summary_thread.start()
+        callbacks.log(f"📝 总结输出目录: {summary_dir}")
 
     try:
         reached_max = False
@@ -444,6 +629,7 @@ def extract_all_chats(
                             exclude_list,
                             remaining,
                             callbacks,
+                            summary_queue=summary_queue,
                         )
                         total_chats += folded_chats
                         total_messages += folded_messages
@@ -454,7 +640,7 @@ def extract_all_chats(
 
                 total_chats += 1
                 callbacks.log(f"\n💬 ({total_chats}) {item.name}...")
-                success, msg_count = _process_single_chat(
+                success, msg_count, filepath = _process_single_chat(
                     device,
                     navigator,
                     extractor,
@@ -468,6 +654,8 @@ def extract_all_chats(
                 if success:
                     total_messages += msg_count
                     callbacks.log(f"  ✅ {msg_count} 条消息")
+                    if summary_queue is not None and filepath is not None and msg_count > 0:
+                        summary_queue.put(filepath)
                 else:
                     failed_chats.append(item.name)
                     callbacks.log("  ❌ 提取失败")
@@ -480,9 +668,12 @@ def extract_all_chats(
             if not navigator.scroll_chat_list(device):
                 break
     except KeyboardInterrupt:
+        _stop_summary_thread()
         callbacks.log(f"\n\n已中断。已处理 {total_chats} 个会话，提取 {total_messages} 条消息。")
         callbacks.log(f"输出目录: {batch_dir}")
         raise
+    finally:
+        _stop_summary_thread()
 
     callbacks.log(f"\n{'=' * 40}")
     callbacks.log(f"完成！共处理 {total_chats} 个会话，提取 {total_messages} 条消息")
@@ -497,6 +688,8 @@ __all__ = [
     "OrchestratorCallbacks",
     "extract_all_chats",
     "extract_single",
+    "summarize_folder",
     "summarize_file",
+    "summarize_one",
     "summarize_session",
 ]

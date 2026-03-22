@@ -16,7 +16,12 @@ from wechat_summary.calibrator import Calibrator
 from wechat_summary.config import ChatViewConfig, SelectorConfig, load_config
 from wechat_summary.device import DeviceManager
 from wechat_summary.models import LLMConfig
-from wechat_summary.orchestrator import extract_all_chats, extract_single, summarize_file
+from wechat_summary.orchestrator import (
+    extract_all_chats,
+    extract_single,
+    summarize_file,
+    summarize_folder,
+)
 from wechat_summary.selectors import stable_dump
 
 
@@ -247,7 +252,7 @@ class WeChatSummaryGUI:
 
         action_frame = ttk.LabelFrame(main_frame, text="操作", padding=10)
         action_frame.grid(row=3, column=0, sticky="ew", pady=(0, 8))
-        for col in range(4):
+        for col in range(5):
             action_frame.columnconfigure(col, weight=1)
 
         calibrate_btn = ttk.Button(action_frame, text="🔧 校准", command=self._on_calibrate)
@@ -260,7 +265,20 @@ class WeChatSummaryGUI:
         extract_all_btn.grid(row=0, column=2, padx=4, pady=4, sticky="ew")
         summarize_btn.grid(row=0, column=3, padx=4, pady=4, sticky="ew")
 
-        self._action_buttons = [calibrate_btn, extract_btn, extract_all_btn, summarize_btn]
+        summarize_all_btn = ttk.Button(
+            action_frame,
+            text="📝 批量总结",
+            command=self._on_summarize_folder,
+        )
+        summarize_all_btn.grid(row=1, column=0, padx=4, pady=4, sticky="ew")
+
+        self._action_buttons = [
+            calibrate_btn,
+            extract_btn,
+            extract_all_btn,
+            summarize_btn,
+            summarize_all_btn,
+        ]
 
         self.stop_btn = ttk.Button(
             action_frame,
@@ -545,6 +563,17 @@ class WeChatSummaryGUI:
                 max_list_scrolls_str = self.max_list_scrolls_var.get().strip()
                 max_list_scrolls = int(max_list_scrolls_str) if max_list_scrolls_str else 1000
 
+                should_summarize = self.summarize_var.get()
+                llm_config = None
+                if should_summarize:
+                    llm_config = LLMConfig(
+                        base_url=self.base_url_var.get().strip(),
+                        api_key=self.api_key_var.get().strip(),
+                        model=self.model_var.get().strip(),
+                        temperature=0.3,
+                        max_tokens=4096,
+                    )
+
                 extract_all_chats(
                     connected,
                     config,
@@ -557,6 +586,10 @@ class WeChatSummaryGUI:
                     exclude_list=exclude_list,
                     max_scrolls=max_scrolls,
                     max_list_scrolls=max_list_scrolls,
+                    summarize=should_summarize,
+                    llm_config=llm_config,
+                    system_prompt_file=self.system_prompt_var.get().strip() or None,
+                    user_template_file=self.user_template_var.get().strip() or None,
                 )
             except Exception as exc:  # noqa: BLE001
                 self.log(f"❌ 全量提取失败: {exc}")
@@ -573,6 +606,37 @@ class WeChatSummaryGUI:
             return
         self._disable_action_buttons()
         self._run_in_thread(self._do_summarize, input_file)
+
+    def _on_summarize_folder(self) -> None:
+        folder = filedialog.askdirectory(
+            title="选择聊天记录目录",
+            initialdir=self.output_dir_var.get().strip() or "./output",
+        )
+        if not folder:
+            return
+        self._run_in_thread(self._do_summarize_folder, folder)
+
+    def _do_summarize_folder(self, input_dir: str) -> None:
+        callbacks = GUICallbacks(self.log, self._stop_event)
+        try:
+            llm_config = LLMConfig(
+                base_url=self.base_url_var.get().strip(),
+                api_key=self.api_key_var.get().strip(),
+                model=self.model_var.get().strip(),
+                temperature=0.3,
+                max_tokens=4096,
+            )
+            summarize_folder(
+                input_dir,
+                llm_config,
+                callbacks,
+                system_prompt_file=self.system_prompt_var.get().strip() or None,
+                user_template_file=self.user_template_var.get().strip() or None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"❌ 批量总结失败: {exc}")
+        finally:
+            self._restore_action_buttons()
 
     def _do_summarize(self, input_file: str) -> None:
         callbacks = GUICallbacks(self.log, self._stop_event)

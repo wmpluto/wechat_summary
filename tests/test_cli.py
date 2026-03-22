@@ -58,6 +58,22 @@ def test_extract_all_help():
     assert "--include" in result.output
     assert "--exclude" in result.output
     assert "--exclude-file" in result.output
+    assert "--summarize" in result.output
+
+
+def test_summarize_all_help():
+    """Summarize-all help should expose expected options."""
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["summarize-all", "--help"])
+
+    assert result.exit_code == 0
+    assert "--input-dir" in result.output
+    assert "--base-url" in result.output
+    assert "--model" in result.output
+    assert "--api-key" in result.output
+    assert "--system-prompt" in result.output
+    assert "--user-template" in result.output
 
 
 def test_summarize_help():

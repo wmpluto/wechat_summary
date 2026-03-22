@@ -21,7 +21,12 @@ from wechat_summary.exceptions import (
     WeChatSummaryError,
 )
 from wechat_summary.models import LLMConfig
-from wechat_summary.orchestrator import extract_all_chats, extract_single, summarize_file
+from wechat_summary.orchestrator import (
+    extract_all_chats,
+    extract_single,
+    summarize_file,
+    summarize_folder,
+)
 from wechat_summary.selectors import stable_dump
 
 
@@ -213,7 +218,6 @@ def extract_all(
 ):
     """Extract messages from all chats in the message list."""
 
-    _ = (base_url, model, api_key)
     callbacks = CLICallbacks()
     batch_dir = Path(output_dir)
 
@@ -239,6 +243,17 @@ def extract_all(
             callbacks.log(f"⚠️  排除名单文件不存在: {exclude_file}")
 
         exclude_list = exclude_list or None
+        llm_config = (
+            LLMConfig(
+                base_url=base_url,
+                api_key=api_key,
+                model=model,
+                temperature=0.3,
+                max_tokens=4096,
+            )
+            if summarize
+            else None
+        )
 
         callbacks.log("正在连接设备...")
         device_manager = DeviceManager()
@@ -269,10 +284,9 @@ def extract_all(
             exclude_list=exclude_list,
             max_scrolls=max_scrolls,
             max_list_scrolls=max_list_scrolls,
+            summarize=summarize,
+            llm_config=llm_config,
         )
-
-        if summarize:
-            callbacks.log("提示: --summarize 将在后续版本支持。")
 
     except KeyboardInterrupt:
         sys.exit(130)
@@ -288,6 +302,80 @@ def extract_all(
         callbacks.log(f"错误: {exc}")
         sys.exit(1)
     except (StabilityError, ExtractionError, CalibrationError) as exc:
+        callbacks.log(f"错误: {exc}")
+        sys.exit(1)
+    except WeChatSummaryError as exc:
+        callbacks.log(f"错误: {exc}")
+        sys.exit(1)
+    except Exception as exc:  # noqa: BLE001
+        callbacks.log(f"错误: {exc}")
+        sys.exit(1)
+
+
+@cli.command("summarize-all")
+@click.option(
+    "--input-dir",
+    required=True,
+    type=click.Path(exists=True),
+    help="Directory with chat JSON files",
+)
+@click.option(
+    "--base-url",
+    default="http://localhost:11434/v1",
+    envvar="WECHAT_LLM_BASE_URL",
+    help="LLM API base URL",
+)
+@click.option("--model", default="qwen2.5", envvar="WECHAT_LLM_MODEL", help="LLM model name")
+@click.option("--api-key", default="ollama", envvar="WECHAT_LLM_API_KEY", help="LLM API key")
+@click.option(
+    "--system-prompt",
+    default=None,
+    type=click.Path(exists=True),
+    help="Custom system prompt file",
+)
+@click.option(
+    "--user-template",
+    default=None,
+    type=click.Path(exists=True),
+    help="Custom user template file",
+)
+def summarize_all(
+    input_dir: str,
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt: str | None,
+    user_template: str | None,
+):
+    """Summarize all chat JSONs in a directory."""
+    callbacks = CLICallbacks()
+    try:
+        llm_config = LLMConfig(
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            temperature=0.3,
+            max_tokens=4096,
+        )
+        summarize_folder(
+            input_dir,
+            llm_config,
+            callbacks,
+            system_prompt_file=system_prompt,
+            user_template_file=user_template,
+        )
+    except DeviceNotFoundError as exc:
+        callbacks.log(f"错误: {exc}")
+        callbacks.log("请检查 USB 连接，并运行 'adb devices' 确认设备是否在线。")
+        sys.exit(1)
+    except WeChatNotFoundError as exc:
+        callbacks.log(f"错误: {exc}")
+        callbacks.log("请确认设备已安装微信 (com.tencent.mm) 并可正常启动。")
+        sys.exit(1)
+    except LLMConnectionError as exc:
+        callbacks.log(f"错误: {exc}")
+        sys.exit(1)
+    except (StabilityError, ExtractionError) as exc:
         callbacks.log(f"错误: {exc}")
         sys.exit(1)
     except WeChatSummaryError as exc:
@@ -508,4 +596,4 @@ def gui():
     app.run()
 
 
-__all__ = ["calibrate", "cli", "extract", "extract_all", "gui", "summarize"]
+__all__ = ["calibrate", "cli", "extract", "extract_all", "gui", "summarize", "summarize_all"]
