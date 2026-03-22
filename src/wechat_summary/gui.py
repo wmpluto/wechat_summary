@@ -61,11 +61,11 @@ class WeChatSummaryGUI:
         self.max_scrolls_var = tk.StringVar(value="")
         self.max_list_scrolls_var = tk.StringVar(value="1000")
         self.base_url_var = tk.StringVar(
-            value=os.environ.get("WECHAT_LLM_BASE_URL", "http://localhost:11434/v1")
+            value=os.environ.get("WECHAT_LLM_BASE_URL", "http://localhost:8080/v1")
         )
-        self.model_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_MODEL", "qwen2.5"))
-        self.api_key_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_API_KEY", "ollama"))
-        self.summarize_var = tk.BooleanVar(value=False)
+        self.model_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_MODEL", "Qwen3.5-35B-A3B"))
+        self.api_key_var = tk.StringVar(value=os.environ.get("WECHAT_LLM_API_KEY", "no-key"))
+        self.summarize_var = tk.BooleanVar(value=True)
         self.system_prompt_var = tk.StringVar(value="")
         self.user_template_var = tk.StringVar(value="")
 
