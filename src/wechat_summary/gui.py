@@ -31,7 +31,9 @@ class _GUILogWriter(io.TextIOBase):
     def __init__(self, log_func):
         self._log = log_func
 
-    def write(self, text: str) -> int:
+    def write(self, text: str | bytes) -> int:
+        if isinstance(text, bytes):
+            text = text.decode("utf-8", errors="replace")
         if text and text.strip():
             self._log(text.rstrip())
         return len(text)
@@ -668,8 +670,10 @@ class WeChatSummaryGUI:
     def _poll_log_queue(self) -> None:
         while not self._log_queue.empty():
             msg = self._log_queue.get_nowait()
+            if isinstance(msg, bytes):
+                msg = msg.decode("utf-8", errors="replace")
             self.log_text.configure(state="normal")
-            self.log_text.insert(tk.END, msg + "\n")
+            self.log_text.insert(tk.END, str(msg) + "\n")
             self.log_text.see(tk.END)
             self.log_text.configure(state="disabled")
         self.root.after(100, self._poll_log_queue)
